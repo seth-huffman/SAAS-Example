@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { leaveRequestsApi } from '../../api/leave-requests.api';
 import { useAuthStore } from '../../store/auth.store';
+import { useViewStore } from '../../store/view.store';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -27,7 +28,8 @@ export function LeaveListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isHR = user?.role === 'super_admin' || user?.role === 'hr_manager';
+  const { viewMode } = useViewStore();
+  const isHR = (user?.role === 'super_admin' || user?.role === 'hr_manager') && viewMode === 'manager';
 
   const { data, isLoading } = useQuery({ queryKey: ['leave-requests'], queryFn: () => leaveRequestsApi.list() });
 
@@ -84,7 +86,7 @@ export function LeaveListPage() {
                             <Button size="sm" onClick={() => approveMutation.mutate(lr.id)} disabled={approveMutation.isPending}>
                               <Check size={12} /> Approve
                             </Button>
-                            <Button size="sm" className="btn--green" onClick={() => rejectMutation.mutate(lr.id)} disabled={rejectMutation.isPending}>
+                            <Button size="sm" variant="outline" onClick={() => rejectMutation.mutate(lr.id)} disabled={rejectMutation.isPending}>
                               <X size={12} /> Reject
                             </Button>
                           </div>

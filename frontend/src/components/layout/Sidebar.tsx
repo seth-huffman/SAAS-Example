@@ -9,7 +9,6 @@ const managerItems = [
   { to: '/leaves',              label: 'Leave Requests',       icon: CalendarDays },
   { to: '/performance-reviews', label: 'Performance Reviews',  icon: Star         },
   { to: '/job-postings',        label: 'Job Postings',         icon: Briefcase    },
-  { to: '/profile',             label: 'My Profile',           icon: User         },
 ];
 
 const employeeItems = [

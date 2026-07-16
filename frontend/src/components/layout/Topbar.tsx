@@ -9,12 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { LogOut, User, ArrowLeftRight } from 'lucide-react';
+import { LogOut, User, ArrowLeftRight, Menu } from 'lucide-react';
 
-export function Topbar() {
-  const { clearAuth } = useAuthStore();
+export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+  const { user, clearAuth } = useAuthStore();
   const { viewMode, toggle } = useViewStore();
   const navigate = useNavigate();
+
+  const isHR = user?.role === 'super_admin' || user?.role === 'hr_manager';
+  const isManagerView = isHR && viewMode === 'manager';
 
   const handleLogout = async () => {
     try {
@@ -30,6 +33,14 @@ export function Topbar() {
 
   return (
     <header className="topbar">
+      <button
+        className="topbar__menu-btn"
+        onClick={onMenuClick}
+        aria-label="Open navigation menu"
+      >
+        <Menu size={20} />
+      </button>
+
       <div className="topbar__brand-wrap">
         <span className="topbar__brand">
           <span style={{ fontWeight: 300 }}>shift</span>
@@ -41,19 +52,23 @@ export function Topbar() {
       <div className="topbar__right">
         <button className="topbar__view-toggle" onClick={toggle}>
           <ArrowLeftRight size={15} />
-          {nextLabel}
+          <span className="topbar__view-toggle-label">{nextLabel}</span>
         </button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<button className="topbar__user-btn topbar__user-btn--icon" />}>
+          <DropdownMenuTrigger render={<button className="topbar__user-btn" />}>
             <User size={18} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" style={{ minWidth: '192px' }}>
-            <DropdownMenuItem onClick={() => navigate('/profile')}>
-              <User size={16} />
-              My Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {!isManagerView && (
+              <>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <User size={16} />
+                  My Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onClick={handleLogout} variant="destructive">
               <LogOut size={16} />
               Log out

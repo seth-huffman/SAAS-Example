@@ -96,7 +96,6 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
-        <Badge variant="secondary" className="badge--pill">{roleLabel}</Badge>
       </div>
 
       {/* ── Personal Information ──────────────────────────── */}

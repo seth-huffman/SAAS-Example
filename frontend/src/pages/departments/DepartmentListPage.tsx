@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Building2, Plus, Trash2, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
+import { useViewStore } from '../../store/view.store';
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -27,7 +28,8 @@ export function DepartmentListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isHR = user?.role === 'super_admin' || user?.role === 'hr_manager';
+  const { viewMode } = useViewStore();
+  const isHR = (user?.role === 'super_admin' || user?.role === 'hr_manager') && viewMode === 'manager';
   const [open, setOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -56,38 +58,40 @@ export function DepartmentListPage() {
     <div className="page">
       <div className="page__header">
         <h1 className="page__title">Departments</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus size={16} /> New Department
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create Department</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit((d) => mutate(d))} className="form">
-              <div className="field">
-                <Label>Name *</Label>
-                <Input {...register('name')} />
-                {errors.name && <p className="field__error">{errors.name.message}</p>}
-              </div>
-              <div className="field">
-                <Label>Description</Label>
-                <Input {...register('description')} />
-              </div>
-              <div className="field">
-                <Label>Manager</Label>
-                <Select onValueChange={(v: string | null) => setValue('managerId', v ?? undefined)}>
-                  <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
-                  <SelectContent>
-                    {employees?.data.map((e) => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="form-actions">
-                <Button type="submit" disabled={isPending}>{isPending ? 'Creating…' : 'Create'}</Button>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {isHR && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button />}>
+              <Plus size={16} /> New Department
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Create Department</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit((d) => mutate(d))} className="form">
+                <div className="field">
+                  <Label>Name *</Label>
+                  <Input {...register('name')} />
+                  {errors.name && <p className="field__error">{errors.name.message}</p>}
+                </div>
+                <div className="field">
+                  <Label>Description</Label>
+                  <Input {...register('description')} />
+                </div>
+                <div className="field">
+                  <Label>Manager</Label>
+                  <Select onValueChange={(v: string | null) => setValue('managerId', v ?? undefined)}>
+                    <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
+                    <SelectContent>
+                      {employees?.data.map((e) => <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="form-actions">
+                  <Button type="submit" disabled={isPending}>{isPending ? 'Creating…' : 'Create'}</Button>
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {isLoading ? (
