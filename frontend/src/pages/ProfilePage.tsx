@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/auth.api';
 import { employeesApi } from '../api/employees.api';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Briefcase, MapPin, Mail } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
@@ -70,101 +70,73 @@ export function ProfilePage() {
     : null;
 
   return (
-    <div className="page profile-page">
-      <h1 className="page__title">My Profile</h1>
+    <div className="page profile-detail">
 
-      {/* ── Header card ───────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="profile-avatar-header">
-            <Avatar className="avatar--xl">
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle>{fullName}</CardTitle>
+      {/* ── Page header ──────────────────────────────────── */}
+      <div className="page__header">
+        <h1 className="page__title">My Profile</h1>
+      </div>
+
+      {/* ── Header ───────────────────────────────────────── */}
+      <div className="jobs-detail__header">
+        <div className="profile-avatar-header">
+          <Avatar style={{ width: 52, height: 52 }}>
+            <AvatarFallback style={{ fontSize: '1.1rem', fontWeight: 600 }}>{initials}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h2 className="jobs-detail__title">{fullName}</h2>
+            <div className="jobs-detail__meta">
               {emp?.jobTitle && (
-                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginTop: 2 }}>
-                  {emp.jobTitle}
-                  {emp.department ? ` · ${emp.department.name}` : ''}
-                </p>
+                <span><Briefcase size={13} />{emp.jobTitle}</span>
               )}
-              <div className="profile-badge" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                <Badge>{roleLabel}</Badge>
-                {emp?.workType && (
-                  <Badge variant="outline">{WORK_TYPE_LABELS[emp.workType]}</Badge>
-                )}
-                {emp?.status && (
-                  <Badge className={emp.status === 'active' ? 'badge--active' : 'badge--terminated'}>
-                    {emp.status.charAt(0).toUpperCase() + emp.status.slice(1)}
-                  </Badge>
-                )}
-              </div>
+              {emp?.department?.name && (
+                <span><MapPin size={13} />{emp.department.name}</span>
+              )}
+              <span><Mail size={13} />{me?.email}</span>
             </div>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+        <Badge variant="secondary" className="badge--pill">{roleLabel}</Badge>
+      </div>
 
       {/* ── Personal Information ──────────────────────────── */}
-      <Card>
-        <CardHeader><CardTitle>Personal Information</CardTitle></CardHeader>
-        <CardContent>
-          <Separator style={{ marginBottom: 16 }} />
-          <div className="profile-grid profile-grid--3">
-            <Field label="First Name"   value={fmt(emp?.firstName)} />
-            <Field label="Middle Name"  value={fmt(emp?.middleName)} />
-            <Field label="Last Name"    value={fmt(emp?.lastName)} />
+      <div className="jobs-detail__body">
+        <div>
+          <p className="jobs-detail__req-heading">Personal Information</p>
+          <div className="profile-grid profile-grid--2">
             <Field label="Date of Birth" value={fmtDate(emp?.birthDate)} />
-            <Field label="Email"        value={fmt(emp?.email ?? me?.email)} />
-            <Field label="Phone"        value={fmt(emp?.phone)} />
+            <Field label="Phone"         value={fmt(emp?.phone)} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* ── Work Information ──────────────────────────────── */}
-      {!loadingEmp && (
-        <Card>
-          <CardHeader><CardTitle>Work Information</CardTitle></CardHeader>
-          <CardContent>
-            <Separator style={{ marginBottom: 16 }} />
+        {/* ── Work Information ──────────────────────────── */}
+        {!loadingEmp && (
+          <div>
+            <p className="jobs-detail__req-heading">Work Information</p>
             <div className="profile-grid">
-              <Field label="Job Title"    value={fmt(emp?.jobTitle)} />
-              <Field label="Department"   value={fmt(emp?.department?.name)} />
-              <Field label="Work Arrangement" value={emp?.workType ? WORK_TYPE_LABELS[emp.workType] : '—'} />
-              <Field label="Supervisor"   value={fmt(supervisorName)} />
-              <Field label="Hire Date"    value={fmtDate(emp?.hireDate)} />
-              <Field label="Status"       value={emp?.status ? emp.status.charAt(0).toUpperCase() + emp.status.slice(1) : '—'} />
+              <Field label="Job Title"         value={fmt(emp?.jobTitle)} />
+              <Field label="Department"        value={fmt(emp?.department?.name)} />
+              <Field label="Work Arrangement"  value={emp?.workType ? WORK_TYPE_LABELS[emp.workType] : '—'} />
+              <Field label="Supervisor"        value={fmt(supervisorName)} />
+              <Field label="Hire Date"         value={fmtDate(emp?.hireDate)} />
+              <Field label="Status"            value={emp?.status ? emp.status.charAt(0).toUpperCase() + emp.status.slice(1) : '—'} />
+              <Field label="Role"              value={roleLabel} />
+              <Field label="Member Since"      value={fmtDate(me?.createdAt)} />
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* ── Compensation ──────────────────────────────────── */}
-      {!loadingEmp && (
-        <Card>
-          <CardHeader><CardTitle>Compensation</CardTitle></CardHeader>
-          <CardContent>
-            <Separator style={{ marginBottom: 16 }} />
+        {/* ── Compensation ──────────────────────────────── */}
+        {!loadingEmp && (
+          <div>
+            <p className="jobs-detail__req-heading">Compensation</p>
             <div className="profile-grid">
               <Field label="Annual Salary" value={fmtMoney(emp?.salary)} />
               <Field label="Bonus"         value={fmtMoney(emp?.bonus)} />
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Account ───────────────────────────────────────── */}
-      <Card>
-        <CardHeader><CardTitle>Account</CardTitle></CardHeader>
-        <CardContent>
-          <Separator style={{ marginBottom: 16 }} />
-          <div className="profile-grid">
-            <Field label="Email"          value={fmt(me?.email)} />
-            <Field label="Role"           value={roleLabel} />
-            <Field label="Account Status" value={me?.isActive ? 'Active' : 'Inactive'} />
-            <Field label="Member Since"   value={fmtDate(me?.createdAt)} />
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

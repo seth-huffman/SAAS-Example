@@ -1,4 +1,4 @@
-export type ReviewStatus = 'submitted' | 'reviewed';
+export type ReviewStatus = 'Submitted' | 'Reviewed';
 
 export interface PerformanceReview {
   id: string;

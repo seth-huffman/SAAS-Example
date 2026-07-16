@@ -4,24 +4,28 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 import { leaveRequestsApi } from '../api/leave-requests.api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import type { HalfDayPeriod, LeaveRequest, LeaveStatus, LeaveType } from '../types/leave-request.types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import type { HalfDayPeriod, LeaveRequest, LeaveType } from '../types/leave-request.types';
 
 /* ── Schema ──────────────────────────────────────────────── */
 
 const schema = z.object({
-  leaveType:     z.enum(['vacation', 'sick', 'personal', 'other']),
-  startDate:     z.string().min(1, 'Start date required'),
-  endDate:       z.string().optional(),
-  isHalfDay:     z.boolean(),
-  halfDayPeriod: z.enum(['morning', 'afternoon']).optional(),
-  reason:        z.string().optional(),
+  leaveType:      z.enum(['vacation', 'sick', 'personal', 'other']),
+  startDate:      z.string().min(1, 'Start date required'),
+  endDate:        z.string().optional(),
+  isHalfDay:      z.boolean(),
+  halfDayPeriod:  z.enum(['morning', 'afternoon']).optional(),
+  hoursRequested: z.string().optional(),
+  reason:         z.string().optional(),
+}).refine((d) => !d.hoursRequested || (Number(d.hoursRequested) >= 0.5 && Number(d.hoursRequested) <= 24), {
+  message: 'Enter a value between 0.5 and 24',
+  path: ['hoursRequested'],
 }).refine((d) => {
   if (d.isHalfDay) return true;
   if (!d.endDate) return false;
@@ -43,12 +47,6 @@ const TYPE_LABELS: Record<LeaveType, string> = {
   other:    'Other',
 };
 
-const STATUS_CLASS: Record<LeaveStatus, string> = {
-  pending:  'badge--pending',
-  approved: 'badge--active',
-  rejected: 'badge--terminated',
-};
-
 function fmtDateRange(r: LeaveRequest) {
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
   const start = new Date(r.startDate + 'T00:00:00').toLocaleDateString(undefined, opts);
@@ -62,22 +60,27 @@ function fmtDateRange(r: LeaveRequest) {
 
 /* ── Request card ────────────────────────────────────────── */
 
-function RequestCard({ r }: { r: LeaveRequest }) {
+function RequestCard({ r, onDelete }: { r: LeaveRequest; onDelete?: (r: LeaveRequest) => void }) {
   return (
     <div className="timeoff-request-card">
       <div className="timeoff-request-card__top">
         <span className="timeoff-request-card__type">{TYPE_LABELS[r.leaveType]}</span>
-        <Badge className={`timeoff-request-card__badge ${STATUS_CLASS[r.status]}`}>
-          {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-        </Badge>
+        {r.status === 'pending' && onDelete && (
+          <button
+            type="button"
+            className="timeoff-request-card__delete-btn"
+            title="Delete request"
+            onClick={() => onDelete(r)}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
-      <p className="timeoff-request-card__dates">{fmtDateRange(r)}</p>
+      <p className="timeoff-request-card__dates">
+        {fmtDateRange(r)}
+        {r.hoursRequested != null && ` · ${r.hoursRequested} hrs`}
+      </p>
       {r.reason && <p className="timeoff-request-card__reason">{r.reason}</p>}
-      {r.reviewNote && (
-        <p className="timeoff-request-card__note">
-          <span className="timeoff-request-card__note-label">Note:</span> {r.reviewNote}
-        </p>
-      )}
     </div>
   );
 }
@@ -87,6 +90,7 @@ function RequestCard({ r }: { r: LeaveRequest }) {
 export function TimeOffPage() {
   const queryClient = useQueryClient();
   const [isHalfDay, setIsHalfDay] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<LeaveRequest | null>(null);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -118,6 +122,7 @@ export function TimeOffPage() {
       reason:        data.reason || undefined,
       isHalfDay:     data.isHalfDay,
       halfDayPeriod: data.halfDayPeriod as HalfDayPeriod | undefined,
+      hoursRequested: data.hoursRequested ? Number(data.hoursRequested) : undefined,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
@@ -128,22 +133,29 @@ export function TimeOffPage() {
     onError: () => toast.error('Failed to submit request'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => leaveRequestsApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      toast.success('Request deleted');
+      setDeleteTarget(null);
+    },
+    onError: () => toast.error('Failed to delete request'),
+  });
+
   return (
     <div className="page">
-      <h1 className="page__title">Time Off</h1>
 
-      <div className="timeoff-layout">
+      {/* ── Request form card ────────────────────────────── */}
+      <Card className="timeoff-form-card">
+        <CardHeader><CardTitle>Request Time Off</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="form">
 
-        {/* ── Left: Request form ──────────────────────────── */}
-        <Card className="timeoff-layout__form">
-          <CardHeader><CardTitle>Request Time Off</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="form">
-
+            <div className="form-grid form-grid--5">
               <div className="field">
-                <Label>Type</Label>
                 <Select onValueChange={(v) => setValue('leaveType', v as FormData['leaveType'])}>
-                  <SelectTrigger><SelectValue placeholder="Select type…" /></SelectTrigger>
+                  <SelectTrigger aria-label="Type"><SelectValue placeholder="Select type…" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="vacation">Vacation</SelectItem>
                     <SelectItem value="sick">Sick Leave</SelectItem>
@@ -154,30 +166,38 @@ export function TimeOffPage() {
                 {errors.leaveType && <p className="field__error">{errors.leaveType.message}</p>}
               </div>
 
-              <div className="half-day-toggle">
-                <label className="half-day-toggle__label">
-                  <input
-                    type="checkbox"
-                    className="half-day-toggle__checkbox"
-                    checked={isHalfDay}
-                    onChange={(e) => handleHalfDayToggle(e.target.checked)}
-                  />
-                  <span className="half-day-toggle__track" />
-                  Half Day
-                </label>
+              <div className="field">
+                <Select value={isHalfDay ? 'yes' : 'no'} onValueChange={(v) => handleHalfDayToggle(v === 'yes')}>
+                  <SelectTrigger aria-label="Half Day"><SelectValue placeholder="Half Day?" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">Half Day: No</SelectItem>
+                    <SelectItem value="yes">Half Day: Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="field">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="24"
+                  aria-label="Hours Off"
+                  placeholder="Hours Off (optional)"
+                  {...register('hoursRequested')}
+                />
+                {errors.hoursRequested && <p className="field__error">{errors.hoursRequested.message}</p>}
               </div>
 
               {isHalfDay ? (
-                <div className="form-grid">
+                <>
                   <div className="field">
-                    <Label>Date</Label>
-                    <Input type="date" {...register('startDate')} />
+                    <Input type="date" aria-label="Date" {...register('startDate')} />
                     {errors.startDate && <p className="field__error">{errors.startDate.message}</p>}
                   </div>
                   <div className="field">
-                    <Label>Period</Label>
                     <Select onValueChange={(v) => setValue('halfDayPeriod', v as 'morning' | 'afternoon')}>
-                      <SelectTrigger><SelectValue placeholder="Select period…" /></SelectTrigger>
+                      <SelectTrigger aria-label="Period"><SelectValue placeholder="Select period…" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="morning">Morning</SelectItem>
                         <SelectItem value="afternoon">Afternoon</SelectItem>
@@ -185,28 +205,27 @@ export function TimeOffPage() {
                     </Select>
                     {errors.halfDayPeriod && <p className="field__error">{errors.halfDayPeriod.message}</p>}
                   </div>
-                </div>
+                </>
               ) : (
-                <div className="form-grid">
+                <>
                   <div className="field">
-                    <Label>Start Date</Label>
-                    <Input type="date" {...register('startDate')} />
+                    <Input type="date" aria-label="Start Date" {...register('startDate')} />
                     {errors.startDate && <p className="field__error">{errors.startDate.message}</p>}
                   </div>
                   <div className="field">
-                    <Label>End Date</Label>
-                    <Input type="date" min={startDate} {...register('endDate')} />
+                    <Input type="date" aria-label="End Date" min={startDate} {...register('endDate')} />
                     {errors.endDate && <p className="field__error">{errors.endDate.message}</p>}
                   </div>
-                </div>
+                </>
               )}
+            </div>
 
-              <div className="field">
-                <Label>Reason <span className="field__optional">(optional)</span></Label>
+            <div className="timeoff-form-row2">
+              <div className="field timeoff-form-row2__message">
                 <textarea
                   className="textarea"
-                  rows={3}
-                  placeholder="Briefly describe the reason for your time off…"
+                  aria-label="Reason"
+                  placeholder="Reason (optional) — briefly describe the reason for your time off…"
                   {...register('reason')}
                 />
               </div>
@@ -214,48 +233,40 @@ export function TimeOffPage() {
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Submitting…' : 'Submit Request'}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-        {/* ── Right: My Requests ──────────────────────────── */}
-        <div className="timeoff-layout__history">
-          <h2 className="timeoff-history__heading">My Requests</h2>
+      <h1 className="page__title">Time Off</h1>
+      
+      {/* ── Requests history ─────────────────────────────── */}
+      <div className="timeoff-layout__history">
+        <h2 className="timeoff-history__heading">My Pending Requests</h2>
 
-          {isLoading ? (
-            <p className="timeoff-history__empty">Loading…</p>
-          ) : myRequests.length === 0 ? (
-            <p className="timeoff-history__empty">No requests submitted yet.</p>
-          ) : (
-            <>
-              {/* Pending */}
-              <div className="timeoff-history__section">
+        {isLoading ? (
+          <p className="timeoff-history__empty">Loading…</p>
+        ) : myRequests.length === 0 ? (
+          <p className="timeoff-history__empty">No requests submitted yet.</p>
+        ) : (
+          <>
+            <div className="timeoff-history__row">
+              <div className="timeoff-history__section timeoff-history__section--pending">
                 <div className="timeoff-history__section-header">
                   <span className="timeoff-history__section-title">Pending</span>
-                  {pending.length > 0 && (
-                    <span className="timeoff-history__count timeoff-history__count--pending">
-                      {pending.length}
-                    </span>
-                  )}
                 </div>
                 {pending.length === 0 ? (
                   <p className="timeoff-history__empty-sub">No pending requests</p>
                 ) : (
                   <div className="timeoff-history__list">
-                    {pending.map((r) => <RequestCard key={r.id} r={r} />)}
+                    {pending.map((r) => <RequestCard key={r.id} r={r} onDelete={setDeleteTarget} />)}
                   </div>
                 )}
               </div>
 
-              {/* Approved */}
-              <div className="timeoff-history__section">
+              <div className="timeoff-history__section timeoff-history__section--approved">
                 <div className="timeoff-history__section-header">
                   <span className="timeoff-history__section-title">Approved</span>
-                  {approved.length > 0 && (
-                    <span className="timeoff-history__count timeoff-history__count--approved">
-                      {approved.length}
-                    </span>
-                  )}
                 </div>
                 {approved.length === 0 ? (
                   <p className="timeoff-history__empty-sub">No approved requests</p>
@@ -265,26 +276,46 @@ export function TimeOffPage() {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Rejected — only show if there are some */}
-              {rejected.length > 0 && (
-                <div className="timeoff-history__section">
-                  <div className="timeoff-history__section-header">
-                    <span className="timeoff-history__section-title">Rejected</span>
-                    <span className="timeoff-history__count timeoff-history__count--rejected">
-                      {rejected.length}
-                    </span>
-                  </div>
-                  <div className="timeoff-history__list">
-                    {rejected.map((r) => <RequestCard key={r.id} r={r} />)}
-                  </div>
+            {rejected.length > 0 && (
+              <div className="timeoff-history__section timeoff-history__section--rejected">
+                <div className="timeoff-history__section-header">
+                  <span className="timeoff-history__section-title">Rejected</span>
+                  <span className="timeoff-history__count timeoff-history__count--rejected">
+                    {rejected.length}
+                  </span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-
+                <div className="timeoff-history__list">
+                  {rejected.map((r) => <RequestCard key={r.id} r={r} />)}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Request</DialogTitle>
+          </DialogHeader>
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>
+            Are you sure you want to delete this {deleteTarget && TYPE_LABELS[deleteTarget.leaveType].toLowerCase()} request?
+            This cannot be undone.
+          </p>
+          <div className="form-actions">
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate(deleteTarget!.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete Request'}
+            </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

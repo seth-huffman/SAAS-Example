@@ -14,6 +14,13 @@ export const performanceReviewsApi = {
     const res = await api.post('/performance-reviews', data);
     return res.data.data ?? res.data;
   },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/performance-reviews/${id}`);
+  },
+  updateSelf: async (id: string, data: { reviewPeriod?: string; selfRating?: number; selfComments?: string }): Promise<PerformanceReview> => {
+    const res = await api.patch(`/performance-reviews/${id}/self`, data);
+    return res.data.data ?? res.data;
+  },
   review: async (id: string, data: { managerRating?: number; managerComments?: string; status?: ReviewStatus }): Promise<PerformanceReview> => {
     const res = await api.patch(`/performance-reviews/${id}`, data);
     return res.data.data ?? res.data;

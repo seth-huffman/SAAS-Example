@@ -39,11 +39,11 @@ export const jobPostingsApi = {
     const res = await api.get(`/job-postings/${id}`);
     return res.data.data ?? res.data;
   },
-  create: async (data: { title: string; description: string; requirements?: string; department?: string; salaryMin?: number; salaryMax?: number }): Promise<JobPosting> => {
+  create: async (data: { title: string; description: string; requirements?: string; department?: string; workType?: string; salaryMin?: number; salaryMax?: number }): Promise<JobPosting> => {
     const res = await api.post('/job-postings', data);
     return res.data.data ?? res.data;
   },
-  update: async (id: string, data: { status?: PostingStatus; title?: string; department?: string; description?: string; requirements?: string; salaryMin?: number; salaryMax?: number }): Promise<JobPosting> => {
+  update: async (id: string, data: { status?: PostingStatus; title?: string; department?: string; workType?: string; description?: string; requirements?: string; salaryMin?: number; salaryMax?: number }): Promise<JobPosting> => {
     const res = await api.patch(`/job-postings/${id}`, data);
     return res.data.data ?? res.data;
   },

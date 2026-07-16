@@ -33,4 +33,7 @@ export const leaveRequestsApi = {
     const res = await api.patch(`/leave-requests/${id}/reject`, { reviewNote });
     return res.data.data;
   },
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/leave-requests/${id}`);
+  },
 };

@@ -39,7 +39,10 @@ export function LoginPage() {
 
     onSuccess: async (tokens) => {
       localStorage.setItem('hr-refresh-token', tokens.refreshToken);
-      const me = await import('../api/auth.api').then((m) => m.authApi.me());
+      // Use the freshly-issued access token when calling /auth/me to avoid a 401
+      const axiosApi = await import('../api/axios').then((m) => m.default);
+      const meRes = await axiosApi.get('/auth/me', { headers: { Authorization: `Bearer ${tokens.accessToken}` } });
+      const me = meRes.data.data;
       setAuth({ userId: me.id, email: me.email, role: me.role }, tokens.accessToken);
 
       // Measure the brand element's current center in the viewport

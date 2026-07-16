@@ -14,6 +14,7 @@ export interface LeaveRequest {
   reason: string | null;
   isHalfDay: boolean;
   halfDayPeriod: HalfDayPeriod | null;
+  hoursRequested: number | null;
   status: LeaveStatus;
   reviewedById: string | null;
   reviewNote: string | null;
@@ -29,4 +30,5 @@ export interface CreateLeaveRequestPayload {
   reason?: string;
   isHalfDay?: boolean;
   halfDayPeriod?: HalfDayPeriod;
+  hoursRequested?: number;
 }

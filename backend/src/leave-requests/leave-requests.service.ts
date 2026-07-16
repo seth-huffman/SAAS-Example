@@ -77,6 +77,7 @@ export class LeaveRequestsService {
       reason:       dto.reason       ?? null,
       isHalfDay:    dto.isHalfDay    ?? false,
       halfDayPeriod: dto.halfDayPeriod ?? null,
+      hoursRequested: dto.hoursRequested ?? null,
       status: LeaveStatus.PENDING,
     });
     return this.leaveRepo.save(lr);
@@ -106,8 +107,11 @@ export class LeaveRequestsService {
     return this.leaveRepo.save(lr);
   }
 
-  async remove(id: string): Promise<void> {
-    const lr = await this.findById(id);
+  async remove(id: string, requestUser: RequestUser): Promise<void> {
+    const lr = await this.findById(id, requestUser);
+    if (requestUser.role === UserRole.EMPLOYEE && lr.status !== LeaveStatus.PENDING) {
+      throw new BadRequestException('Only pending requests can be deleted');
+    }
     await this.leaveRepo.remove(lr);
   }
 }

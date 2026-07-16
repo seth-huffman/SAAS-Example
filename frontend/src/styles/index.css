@@ -55,7 +55,9 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Urbanist Variable', sans-serif;
+  /* Use the global Open Sans for all headings so the site text is consistent.
+     The brand name (ShiftControl) is explicitly styled below to use Urbanist. */
+  font-family: 'Open Sans Variable', sans-serif;
   font-weight: 600;
   line-height: 1.25;
   margin: 0;
@@ -97,4 +99,11 @@ table { border-collapse: collapse; width: 100%; }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ===== Brand font (only the product name) ===== */
+/* Keep the 'ShiftControl' brand in Urbanist while all other text uses Open Sans */
+.topbar__brand,
+.login-card__brand-name {
+  font-family: 'Urbanist Variable', sans-serif;
 }

@@ -12,6 +12,8 @@ services:
       target: development
     volumes:
       - ./backend/src:/app/src
+    env_file:
+      - ./backend/.env
     environment:
       NODE_ENV: development
     command: npm run start:dev

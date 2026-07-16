@@ -7,7 +7,6 @@ const managerItems = [
   { to: '/employees',           label: 'Employees',            icon: Users        },
   { to: '/departments',         label: 'Departments',          icon: Building2    },
   { to: '/leaves',              label: 'Leave Requests',       icon: CalendarDays },
-  { to: '/org-chart',           label: 'Org Chart',            icon: GitBranch    },
   { to: '/performance-reviews', label: 'Performance Reviews',  icon: Star         },
   { to: '/job-postings',        label: 'Job Postings',         icon: Briefcase    },
   { to: '/profile',             label: 'My Profile',           icon: User         },

@@ -42,7 +42,7 @@ services:
     container_name: hr-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       DB_HOST: postgres
       NODE_ENV: production

@@ -1,7 +1,7 @@
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { PostingStatus } from '../entities/job-posting.entity';
+import { PostingStatus, WorkType } from '../entities/job-posting.entity';
 
 export class UpdateJobPostingDto {
   @ApiPropertyOptional()
@@ -23,6 +23,11 @@ export class UpdateJobPostingDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  @ApiPropertyOptional({ enum: WorkType })
+  @IsOptional()
+  @IsEnum(WorkType)
+  workType?: WorkType;
 
   @ApiPropertyOptional()
   @IsOptional()

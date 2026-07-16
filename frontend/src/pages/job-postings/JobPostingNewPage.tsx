@@ -16,6 +16,7 @@ const schema = z.object({
   description:  z.string().min(10, 'Description must be at least 10 characters'),
   requirements: z.string().optional(),
   department:   z.string().optional(),
+  workType:     z.enum(['onsite', 'hybrid', 'remote']).optional(),
   salaryMin:    z.number().min(0).optional().or(z.nan().transform(() => undefined)),
   salaryMax:    z.number().min(0).optional().or(z.nan().transform(() => undefined)),
 });
@@ -26,7 +27,7 @@ export function JobPostingNewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
@@ -36,6 +37,7 @@ export function JobPostingNewPage() {
       description:  data.description,
       requirements: data.requirements || undefined,
       department:   data.department   || undefined,
+      workType:     data.workType     || undefined,
       salaryMin:    data.salaryMin,
       salaryMax:    data.salaryMax,
     }),
@@ -69,6 +71,24 @@ export function JobPostingNewPage() {
             <div className="field">
               <Label>Department</Label>
               <Input placeholder="e.g. Engineering" {...register('department')} />
+            </div>
+
+            <div className="field">
+              <Label>Work Arrangement</Label>
+              <Select
+                value={watch('workType') ?? ''}
+                onValueChange={(value) => setValue('workType', value ? (value as FormData['workType']) : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select work type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No preference</SelectItem>
+                  <SelectItem value="onsite">On-site</SelectItem>
+                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                  <SelectItem value="remote">Remote</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="field">

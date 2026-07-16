@@ -134,6 +134,41 @@ export function JobApplicationPage() {
         if (p.given_name)  setValue('firstName',      p.given_name);
         if (p.family_name) setValue('lastName',       p.family_name);
         if (p.email)       setValue('applicantEmail', p.email);
+        // Populate work experience if available (best-effort mapping)
+        try {
+          const positions = p.positions || p.elements || p.workExperience || p.positionsHistory || [];
+          if (Array.isArray(positions) && positions.length > 0) {
+            // clear existing entries then append
+            // setValue for full array ensures react-hook-form updates properly
+            const mapped = positions.map((pos: any) => ({
+              company:  pos.company?.name || pos.organization?.name || pos.employer || pos.companyName || '',
+              jobTitle: pos.title || pos.jobTitle || pos.position || '',
+              startDate: pos.startDate ? (pos.startDate.year && pos.startDate.month ? `${pos.startDate.year}-${String(pos.startDate.month).padStart(2,'0')}` : pos.startDate) : (pos.start || ''),
+              endDate: pos.endDate ? (pos.endDate.year && pos.endDate.month ? `${pos.endDate.year}-${String(pos.endDate.month).padStart(2,'0')}` : pos.endDate) : (pos.end || ''),
+              isCurrent: !!pos.isCurrent || !!pos.current || false,
+              description: pos.description || pos.summary || '',
+            }));
+            setValue('workExperience', mapped);
+          }
+        } catch (e) {
+          // keep best-effort — ignore errors
+        }
+
+        // Populate education if available
+        try {
+          const schools = p.education || p.educations || p.schools || [];
+          if (Array.isArray(schools) && schools.length > 0) {
+            const mappedEdu = schools.map((s: any) => ({
+              institution: s.schoolName || s.institution || s.institutionName || '',
+              degree: s.degree || s.degreeName || s.qualification || '',
+              fieldOfStudy: s.fieldOfStudy || s.major || '',
+              startDate: s.startDate || '',
+              endDate: s.endDate || '',
+            }));
+            setValue('education', mappedEdu);
+          }
+        } catch (e) {}
+
         toast.success('LinkedIn profile imported');
       } else if (event.data?.type === 'linkedin-error') {
         toast.error('LinkedIn sign-in failed');
@@ -435,26 +470,6 @@ export function JobApplicationPage() {
                 <span className="resume-upload-btn__hint">PDF, DOC, DOCX — max 2 MB</span>
               </button>
             )}
-          </CardContent>
-        </Card>
-
-        {/* ── Cover Letter ─────────────────────────────────── */}
-        <Card>
-          <CardContent className="apply-section">
-            <div className="apply-section__heading">
-              <FileText size={16} />
-              <h2>Cover Letter</h2>
-            </div>
-
-            <div className="field">
-              <textarea
-                className="textarea"
-                rows={7}
-                placeholder="Tell us why you're a great fit for this role, what excites you about the position, and what you'd bring to the team…"
-                {...register('coverLetter')}
-              />
-              {errors.coverLetter && <p className="field__error">{errors.coverLetter.message}</p>}
-            </div>
           </CardContent>
         </Card>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -15,11 +15,24 @@ import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import {
-  Plus, Briefcase, DollarSign, X, Search, Layers,
+  Plus, Briefcase, X, Search, Layers,
   Pencil, ChevronDown, ChevronUp, Paperclip, Users,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import type { JobPosting } from '../../types/job-posting.types';
+
+const WORK_TYPE_LABELS: Record<NonNullable<JobPosting['workType']>, string> = {
+  onsite: 'On-site',
+  hybrid: 'Hybrid',
+  remote: 'Remote',
+};
+
+function formatDepartmentMeta(department: string | null, workType: JobPosting['workType']) {
+  if (!department && !workType) return null;
+  if (!department) return workType ? WORK_TYPE_LABELS[workType] : null;
+  if (!workType) return department;
+  return `${department} (${WORK_TYPE_LABELS[workType]})`;
+}
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -35,11 +48,38 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function renderJobDescription(text: string) {
+  const headings = [
+    "What We'll Do",
+    "What We're Looking For",
+    "What You'll Do",
+    "What You’ll Do",
+    'What You Do',
+    'About the Role',
+    'What We Offer',
+    'Preferred:',
+    'Requirements',
+    'Key Responsibilities',
+    'Responsibilities',
+    'Your Responsibilities',
+  ];
+  const regex = new RegExp(`(${headings.map((h) => h.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})`, 'i');
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    if (regex.test(part)) {
+      return <strong key={index}>{part}</strong>;
+    }
+    return part;
+  });
+}
+
 /* ── Edit dialog schema ──────────────────────────────────── */
 
 const editSchema = z.object({
   title:        z.string().min(1, 'Title required'),
   department:   z.string().optional(),
+  workType:     z.enum(['onsite', 'hybrid', 'remote']).optional(),
   description:  z.string().min(1, 'Description required'),
   requirements: z.string().optional(),
   salaryMin:    z.string().optional(),
@@ -136,7 +176,8 @@ function ApplicantCard({ a }: { a: JobApplicationRecord }) {
 function JobListItem({ p, selected, onClick }: {
   p: JobPosting; selected: boolean; onClick: () => void;
 }) {
-  const salary = fmtSalary(p.salaryMin, p.salaryMax);
+  const departmentLabel = formatDepartmentMeta(p.department, p.workType);
+
   return (
     <button
       className={`jobs-list-item${selected ? ' jobs-list-item--selected' : ''}${p.status === 'closed' ? ' jobs-list-item--closed' : ''}`}
@@ -144,14 +185,12 @@ function JobListItem({ p, selected, onClick }: {
     >
       <div className="jobs-list-item__body">
         <span className="jobs-list-item__title">{p.title}</span>
-        <div className="jobs-list-item__meta">
-          {p.department && <span><Briefcase size={11} />{p.department}</span>}
-          {salary        && <span><DollarSign size={11} />{salary}</span>}
-        </div>
+        {departmentLabel && (
+          <div className="jobs-list-item__meta">
+            <span>{departmentLabel}</span>
+          </div>
+        )}
       </div>
-      <Badge className={`jobs-list-item__badge ${p.status === 'open' ? 'badge--active' : 'badge--terminated'}`}>
-        {p.status}
-      </Badge>
     </button>
   );
 }
@@ -180,22 +219,16 @@ function JobDetail({ p, isManager, onEdit, onClose, onApply }: {
         <div>
           <h2 className="jobs-detail__title">{p.title}</h2>
           <div className="jobs-detail__meta">
-            {p.department && <span><Briefcase size={14} />{p.department}</span>}
-            {salary        && <span><DollarSign size={14} />{salary}</span>}
+            {formatDepartmentMeta(p.department, p.workType) && (
+              <span><Briefcase size={14} />{formatDepartmentMeta(p.department, p.workType)}</span>
+            )}
+            {salary && <span>{salary}</span>}
           </div>
         </div>
-        <div className="jobs-detail__header-right">
-          <Badge className={p.status === 'open' ? 'badge--active' : 'badge--terminated'}>
-            {p.status}
-          </Badge>
-        </div>
       </div>
-
-      <Separator />
-
       {/* Body */}
       <div className="jobs-detail__body">
-        <p className="jobs-detail__desc">{p.description}</p>
+        <p className="jobs-detail__desc">{renderJobDescription(p.description)}</p>
         {p.requirements && (
           <div>
             <p className="jobs-detail__req-heading">Requirements</p>
@@ -291,6 +324,7 @@ export function JobPostingsPage() {
       jobPostingsApi.update(editTarget!.id, {
         title:        data.title,
         department:   data.department   || undefined,
+        workType:     data.workType     || undefined,
         description:  data.description,
         requirements: data.requirements || undefined,
         salaryMin:    data.salaryMin ? Number(data.salaryMin) : undefined,
@@ -306,7 +340,7 @@ export function JobPostingsPage() {
 
   /* ── Edit form ─────────────────────────────────────────── */
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<EditForm>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<EditForm>({
     resolver: zodResolver(editSchema),
   });
 
@@ -315,6 +349,7 @@ export function JobPostingsPage() {
     reset({
       title:        p.title,
       department:   p.department   ?? '',
+      workType:     p.workType     ?? undefined,
       description:  p.description,
       requirements: p.requirements ?? '',
       salaryMin:    p.salaryMin != null ? String(p.salaryMin) : '',
@@ -344,6 +379,13 @@ export function JobPostingsPage() {
   const closed = filtered.filter((p) => p.status === 'closed');
   const selectedPosting = filtered.find((p) => p.id === selectedId) ?? null;
 
+  // Select the first available posting by default when the page loads
+  useEffect(() => {
+    if (!selectedId && filtered.length > 0) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
   return (
     <div className="page jobs-page">
       {/* ── Page header ──────────────────────────────────── */}
@@ -354,14 +396,9 @@ export function JobPostingsPage() {
             <Plus size={16} /> New Posting
           </Button>
         )}
-      </div>
-
-      {/* ── Two-panel layout ─────────────────────────────── */}
-      <div className="jobs-layout">
-
-        {/* Left panel */}
-        <div className="jobs-layout__list">
-          <div className="jobs-list-filters">
+        {/* Moved filters into header for quick access */}
+        {!isManager && (
+          <div className="jobs-list-filters jobs-list-filters--header">
             <div className="job-filters__search">
               <Search size={14} className="job-filters__icon" />
               <Input
@@ -386,6 +423,14 @@ export function JobPostingsPage() {
               </SelectContent>
             </Select>
           </div>
+        )}
+      </div>
+
+      {/* ── Two-panel layout ─────────────────────────────── */}
+      <div className="jobs-layout">
+
+        {/* Left panel */}
+        <div className="jobs-layout__list">
 
           <div className="jobs-list-scroll">
             {isLoading ? (
@@ -398,7 +443,6 @@ export function JobPostingsPage() {
               <>
                 {open.length > 0 && (
                   <>
-                    <p className="jobs-list-section">Open · {open.length}</p>
                     {open.map((p) => (
                       <JobListItem
                         key={p.id} p={p}
@@ -410,7 +454,6 @@ export function JobPostingsPage() {
                 )}
                 {closed.length > 0 && (
                   <>
-                    <p className="jobs-list-section">Closed · {closed.length}</p>
                     {closed.map((p) => (
                       <JobListItem
                         key={p.id} p={p}
@@ -463,6 +506,26 @@ export function JobPostingsPage() {
               <div className="field">
                 <Label>Department <span className="field__optional">(optional)</span></Label>
                 <Input {...register('department')} />
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <div className="field">
+                <Label>Work Arrangement <span className="field__optional">(optional)</span></Label>
+                <Select
+                  value={watch('workType') ?? ''}
+                  onValueChange={(value) => setValue('workType', value ? (value as FormData['workType']) : undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select work type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No preference</SelectItem>
+                    <SelectItem value="onsite">On-site</SelectItem>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="remote">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

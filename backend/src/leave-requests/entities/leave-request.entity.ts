@@ -57,6 +57,9 @@ export class LeaveRequest {
   @Column({ type: 'enum', enum: HalfDayPeriod, nullable: true })
   halfDayPeriod: HalfDayPeriod | null;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  hoursRequested: number | null;
+
   @Column({ type: 'enum', enum: LeaveStatus, default: LeaveStatus.PENDING })
   status: LeaveStatus;
 

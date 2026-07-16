@@ -34,8 +34,6 @@ export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.HR_MANAGER)
   findAll(@Query() filters: EmployeeFilterDto) {
     return this.employeesService.findAll(filters);
   }

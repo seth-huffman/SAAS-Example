@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PerformanceReview, ReviewStatus } from './entities/performance-review.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { CreatePerformanceReviewDto } from './dto/create-performance-review.dto';
 import { UpdatePerformanceReviewDto } from './dto/update-performance-review.dto';
+import { UpdateSelfReviewDto } from './dto/update-self-review.dto';
 import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
@@ -59,6 +60,36 @@ export class PerformanceReviewsService {
       ...(dto.managerComments !== undefined && { managerComments: dto.managerComments }),
       ...(dto.status          !== undefined && { status:          dto.status          }),
     });
+    return this.reviewRepo.save(review);
+  }
+
+  async deleteSelf(id: string, userId: string): Promise<void> {
+    const review = await this.findById(id);
+    const emp = await this.empRepo.findOne({ where: { userId } });
+    if (!emp || review.employeeId !== emp.id) {
+      throw new ForbiddenException('You can only delete your own reviews');
+    }
+    if (review.status !== ReviewStatus.SUBMITTED) {
+      throw new ForbiddenException('Cannot delete a review that has already been approved');
+    }
+    await this.reviewRepo.remove(review);
+  }
+
+  async updateSelf(id: string, dto: UpdateSelfReviewDto, userId: string): Promise<PerformanceReview> {
+    const review = await this.findById(id);
+
+    const emp = await this.empRepo.findOne({ where: { userId } });
+    if (!emp || review.employeeId !== emp.id) {
+      throw new ForbiddenException('You can only edit your own reviews');
+    }
+    if (review.status !== ReviewStatus.SUBMITTED) {
+      throw new ForbiddenException('Cannot edit a review that has already been reviewed by a manager');
+    }
+
+    if (dto.reviewPeriod !== undefined) review.reviewPeriod = dto.reviewPeriod;
+    if (dto.selfRating   !== undefined) review.selfRating   = dto.selfRating;
+    if (dto.selfComments !== undefined) review.selfComments = dto.selfComments;
+
     return this.reviewRepo.save(review);
   }
 }

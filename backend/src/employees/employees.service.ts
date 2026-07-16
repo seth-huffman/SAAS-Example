@@ -27,6 +27,7 @@ export class EmployeesService {
     const qb = this.empRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.department', 'dept')
+      .leftJoinAndSelect('e.supervisor', 'supervisor')
       .orderBy('e.lastName', 'ASC')
       .take(limit)
       .skip((page - 1) * limit);

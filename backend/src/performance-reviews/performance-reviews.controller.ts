@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Patch, Param, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PerformanceReviewsService } from './performance-reviews.service';
 import { CreatePerformanceReviewDto } from './dto/create-performance-review.dto';
 import { UpdatePerformanceReviewDto } from './dto/update-performance-review.dto';
+import { UpdateSelfReviewDto } from './dto/update-self-review.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -31,6 +32,21 @@ export class PerformanceReviewsController {
   @Post()
   create(@Body() dto: CreatePerformanceReviewDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user.userId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteSelf(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.service.deleteSelf(id, user.userId);
+  }
+
+  @Patch(':id/self')
+  updateSelf(
+    @Param('id') id: string,
+    @Body() dto: UpdateSelfReviewDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.updateSelf(id, dto, user.userId);
   }
 
   @Patch(':id')

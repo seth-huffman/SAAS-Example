@@ -9,6 +9,7 @@ export interface Department {
 
 export interface Employee {
   id: string;
+  userId: string | null;
   firstName: string;
   middleName: string | null;
   lastName: string;
